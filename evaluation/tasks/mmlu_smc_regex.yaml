@@ -1,0 +1,21 @@
+group: mmlu_smc_regex
+task:
+  - mmlu_llama_stem
+  - mmlu_llama_other
+  - mmlu_llama_social_sciences
+  - mmlu_llama_humanities
+aggregate_metric_list:
+  - metric: exact_match
+    aggregation: mean
+    weight_by_size: True
+filter_list:
+    - name: "flexible-extract"
+      filter:
+        - function: "multi_choice_regex"
+          group_select: -1
+          ignore_case: true
+          ignore_punctuation: true
+          regex_pattern: "[tT]he best answer is ([A-D])"
+        - function: "take_first"
+metadata:
+  version: 1
