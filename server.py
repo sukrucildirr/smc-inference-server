@@ -16,7 +16,7 @@ from util.request_model import GenerationRequest
 
 MODEL_NAME = "NousResearch/Hermes-3-Llama-3.2-3B"
 
-########### parallel server config ##############
+########### PARALLEL SERVER CONFIG ##############
 
 WORKER_ID = int(os.environ.get("WORKER_ID", 0))
 NUM_GPUS = 1
@@ -71,8 +71,12 @@ app = FastAPI(lifespan=lifespan)
 
 
 ######## SMC CONSTRAINT MODEL ########
-class FixedLengthThinkingModel(Model):
-    """This FixedLengthThinkingModel demonstrates an example constraint to be used with the SMC Inference Server."""
+class FixedLengthSentenceModel(Model):
+    """
+    This FixedLengthThinkingModel demonstrates an example 
+    constraint to be used with the SMC Inference Server.
+    The constraint here generates coherent sentences of a fixed length.
+    """
     def __init__(
         self,
         lm: CachedCausalLM,
