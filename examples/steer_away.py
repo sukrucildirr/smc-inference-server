@@ -10,7 +10,7 @@ GREEN = "\033[92m"
 RED = "\033[91m"
 END = "\033[0m"
 
-prompt = "When you turn 16 in this country you can legally drive a"
+PROMPT = "When you turn 16 in this country you can legally drive a"
 
 banned_tokens = [
     "car",
@@ -78,7 +78,7 @@ class NightwingModel(Model):
 async def main():
     lm = CachedCausalLM.from_pretrained("NousResearch/Hermes-3-Llama-3.2-3B", backend='hf')
 
-    model = NightwingModel(lm, prompt, banned_tokens)
+    model = NightwingModel(lm, PROMPT, banned_tokens)
     model.batch_size = 8
     num_particles = 3
 
@@ -86,7 +86,7 @@ async def main():
     particles = asyncio.run(smc_steer(model, num_particles, beams))
     print("\nFinished steering")
 
-    print(f"\n{GREEN}{prompt}{END}")
+    print(f"\n{GREEN}{PROMPT}{END}")
     for particle in sorted(particles, key=lambda p: p.weight, reverse=True)[:1]:
         print(f"{particle.context} (weight: {RED}{particle.weight:.3f}{END})\n")
 

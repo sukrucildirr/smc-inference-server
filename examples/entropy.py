@@ -28,6 +28,7 @@ PROMPT = "Which number is larger, 9.11 or 9.9?"
 uncertainty_token = "wait..."
 
 def pretty_format(particle):
+    """This method highlights instances of the 'wait...' token insertion"""
     context_str = str(particle.context)
     new_context_str = re.sub(f"({re.escape(uncertainty_token)})", f"{YELLOW}\\1{END}", context_str)
     return f"{new_context_str} (weight: {RED}{particle.weight:.3f}{END})\n"

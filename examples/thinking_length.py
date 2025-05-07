@@ -15,6 +15,7 @@ ITERATIONS = 1
 PROMPT = "What is 2+2?"
 
 def pretty_format(particle):
+    """This method formats particle contexts for display"""
     context_str = str(particle.context)
     return f"{context_str} (weight: {RED}{particle.weight:.3f}{END})"
 
@@ -87,7 +88,6 @@ async def main():
     )
 
     print(f"\nSteering with smc_steer with {GREEN}{NUM_PARTICLES}{END} particles and beam factor {GREEN}{BEAM_FACTOR}{END}")
-
 
     particles = await smc_steer(model, NUM_PARTICLES, BEAM_FACTOR)
 
