@@ -55,7 +55,7 @@ async def lifespan(app: FastAPI):
 
     # Model warmup
     logger.info(f"Warming up model on GPU {gpu_id}...")
-    dummy_model = FixedLengthThinkingModel(lm=lm, prompt="Hello, world", num_tokens=20)
+    dummy_model = FixedLengthSentenceModel(lm=lm, prompt="Hello, world", num_tokens=20)
     await smc_steer(dummy_model, 3, 1)
     logger.info(f"Model warmup complete on GPU {gpu_id}")
     
@@ -142,7 +142,7 @@ async def generate_text(request):
     
     async with lock:
         with torch.inference_mode():
-            model = FixedLengthThinkingModel(
+            model = FixedLengthSentenceModel(
                 lm=lm,
                 prompt=request.prompt,
                 num_tokens=request.num_tokens,

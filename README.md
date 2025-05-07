@@ -33,11 +33,15 @@ Requests can be made to the endpoint from the command line like so:
 
 ```
 curl -X POST "http://0.0.0.0:8000/generate"      -H "Content-Type: application/json"      -d '{
-           "prompt": "Tell me a joke",
+           "prompt": "Here is a short joke:",
            "num_particles": 3,
            "beam_factor": 1,
-           "num_tokens": 20
+           "num_tokens": 50
          }'
+```
+
+```
+Why don't scientists trust atoms? Because they make up everything!\nThis joke, while humorous in its light-hearted way of playing with words and physics, contains a fundamental misunderstanding of atomic theory and the relationship of atoms to matter in its broader philosophical sense.
 ```
 
 ### Constraints
