@@ -4,6 +4,7 @@ import asyncio
 import aiohttp
 
 class LLaMPPLInferenceModel(LM):
+    """LLaMPPLInferenceModel is a custom inference adapter model for use with lm-evaluation-harness"""
     def __init__(
         self, 
         server_url="http://localhost:8000",
@@ -31,8 +32,82 @@ class LLaMPPLInferenceModel(LM):
         except Exception as e:
             print(f"Warning: Could not connect to server at {server_url}: {e}")
             print("Make sure the inference server is running")
+        
+    async def _generate_async(self, request_data, session):
+        """Helper function to make an async request"""
+        async with session.post(f"{self.server_url}/generate", json=request_data, timeout=aiohttp.ClientTimeout(total=120)) as response:
+            if response.status == 200:
+                result = await response.json()
+                return result["generated_text"]
+            else:
+                error_text = await response.text()
+                raise Exception(f"Error from server: {error_text}")
+
+    def generate_until(self, reqs):
+        """Top level method used for generation tasks"""
+        async def process_all_requests():
+            timeout = aiohttp.ClientTimeout(total=2400)
+            connector = aiohttp.TCPConnector(limit=8, force_close=False)
+            
+            async with aiohttp.ClientSession(
+                connector=connector, 
+                timeout=timeout,
+                headers={"Connection": "keep-alive"}
+            ) as session:
+                all_tasks = []
+                for request in reqs:
+                    input_text, gen_params = request.args
+                    
+                    request_data = {
+                        "prompt": input_text, # For reasoning models, we use input_text[:-19] + "<think>" to prompt thinking
+                        "num_tokens": self.num_tokens,
+                        "num_particles": self.num_particles,
+                        "beam_factor": self.beam_factor,
+                        "temperature": self.temperature
+                    }
+                    
+                    all_tasks.append(self._generate_async(request_data, session))
+                
+                all_results = []
+                batch_size = 8
+
+                for i in range(0, len(all_tasks), batch_size):
+                    batch = all_tasks[i:i+batch_size]
+                    batch_results = await asyncio.gather(*batch)
+                    all_results.extend(batch_results)
+                                                                            
+                return all_results
+        
+        loop = asyncio.get_event_loop()
+        results = loop.run_until_complete(process_all_requests())
+        
+        return results
+
+    ### API INTERFACE METHODS FOR LM_EVAL MODEL ###
+
+    def generate(self, context, max_length, stop=None, temperature=1.0):
+        request = {
+            "prompt": context,
+            "num_tokens": min(max_length, self.num_tokens),
+            "num_particles": self.num_particles,
+            "beam_factor": self.beam_factor,
+            "temperature": temperature if temperature else self.temperature
+        }
+        
+        response = requests.post(
+            f"{self.server_url}/generate",
+            json=request
+        )
+        
+        if response.status_code == 200:
+            generated_text = response.json()["generated_text"]
+                        
+            return generated_text
+        else:
+            raise Exception(f"Error from server: {response.text}")
 
     def loglikelihood(self, reqs):
+        """Basic logprob evaluation method, needed for lm_eval model interface"""
         batches = [reqs[i:i + self.batch_size] for i in range(0, len(reqs), self.batch_size)]
         results = []
         
@@ -61,6 +136,7 @@ class LLaMPPLInferenceModel(LM):
         return results
 
     def loglikelihood_rolling(self, reqs):
+        """Rolling logprob evaluation method, needed for lm_eval model interface"""
         batches = [reqs[i:i + self.batch_size] for i in range(0, len(reqs), self.batch_size)]
         results = []
         
@@ -87,92 +163,6 @@ class LLaMPPLInferenceModel(LM):
                 raise Exception(f"Error from server: {response.text}")
                 
         return results
-        
-    async def _generate_async(self, request_data, session):
-        """Helper function to make an async request"""
-        async with session.post(f"{self.server_url}/generate", json=request_data, timeout=aiohttp.ClientTimeout(total=120)) as response:
-            if response.status == 200:
-                result = await response.json()
-                return result["generated_text"]
-            else:
-                error_text = await response.text()
-                raise Exception(f"Error from server: {error_text}")
-
-    def generate_until(self, reqs):
-        """
-        Generate text based on input using async requests for parallelism.
-        
-        Args:
-            reqs: List of Instance objects with args containing (input_text, gen_params)
-            
-        Returns:
-            List of generated texts
-        """
-        async def process_all_requests():
-            timeout = aiohttp.ClientTimeout(total=2400)  # 5 minutes total timeout
-            connector = aiohttp.TCPConnector(limit=8, force_close=False)
-            
-            async with aiohttp.ClientSession(
-                connector=connector, 
-                timeout=timeout,
-                headers={"Connection": "keep-alive"}
-            ) as session:
-                all_tasks = []
-                for request in reqs:
-                    input_text, gen_params = request.args
-                    
-                    # Extract generation parameters
-                    temp = gen_params.get("temperature", self.temperature)
-                    
-                    request_data = {
-                        "prompt": input_text[:-19] + "<think>",
-                        "num_tokens": self.num_tokens,
-                        "num_particles": self.num_particles,
-                        "beam_factor": self.beam_factor,
-                        "temperature": temp
-                    }
-                    
-                    # Create a task for each request
-                    all_tasks.append(self._generate_async(request_data, session))
-                
-                all_results = []
-                batch_size = 8
-
-                for i in range(0, len(all_tasks), batch_size):
-                    batch = all_tasks[i:i+batch_size]
-                    batch_results = await asyncio.gather(*batch)
-                    all_results.extend(batch_results)
-                                                                            
-                return all_results
-                # Wait for all tasks to complete
-                #return await asyncio.gather(*tasks)
-        
-        # Run the async function
-        loop = asyncio.get_event_loop()
-        results = loop.run_until_complete(process_all_requests())
-        
-        return results
-
-    def generate(self, context, max_length, stop=None, temperature=1.0):
-        request = {
-            "prompt": context,
-            "num_tokens": min(max_length, self.num_tokens),
-            "num_particles": self.num_particles,
-            "beam_factor": self.beam_factor,
-            "temperature": temperature if temperature else self.temperature
-        }
-        
-        response = requests.post(
-            f"{self.server_url}/generate",
-            json=request
-        )
-        
-        if response.status_code == 200:
-            generated_text = response.json()["generated_text"]
-                        
-            return generated_text
-        else:
-            raise Exception(f"Error from server: {response.text}")
         
     def tokenize(self, text):
         response = requests.post(
