@@ -1,25 +1,30 @@
-from fastapi import FastAPI, BackgroundTasks
-from pydantic import BaseModel
 import asyncio
-import uvicorn
-import torch
 import logging
-import time
-import os
-from typing import List, Dict, Any
-from contextlib import asynccontextmanager
-from llamppl import Model, LMContext, CachedCausalLM, TokenCategorical, Token, smc_steer
-
-import numpy as np
 import math
+import numpy as np
+import os
+import time
+import torch
+import uvicorn
+
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, BackgroundTasks
+from llamppl import Model, LMContext, CachedCausalLM, TokenCategorical, Token, smc_steer
+from typing import List, Dict, Any
+from util.request_model import GenerationRequest
+
+
+MODEL_NAME = "NousResearch/Hermes-3-Llama-3.2-3B"
+
+########### parallel server config ##############
+
+WORKER_ID = int(os.environ.get("WORKER_ID", 0))
+NUM_GPUS = 1
+
+#################################################
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-WORKER_ID = int(os.environ.get("WORKER_ID", 0))
-NUM_GPUS = 2
-
-MODEL_NAME = "NousResearch/Hermes-3-Llama-3.2-3B"
 
 lm_models = []
 current_model_idx = 0
@@ -28,13 +33,14 @@ model_locks = []
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global lm_models, model_locks
-    
+
     gpu_id = WORKER_ID % NUM_GPUS
     logger.info(f"Worker {WORKER_ID} initializing model on GPU {gpu_id}")
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+
+    # Startup and initialization steps
 
     kwargs = (
-        {"engine_opts": {"gpu_memory_utilization": 0.85, "max_model_len": 8192}}
+        {"engine_opts": {"gpu_memory_utilization": 0.95, "max_model_len": 1024}}
     )
     
     logger.info(f"Loading model on GPU {gpu_id}...")
@@ -47,6 +53,8 @@ async def lifespan(app: FastAPI):
     
     lm_models = [lm]
     model_locks = [asyncio.Lock()]
+
+    # Model warmup
     
     logger.info(f"Warming up model on GPU {gpu_id}...")
     dummy_model = FixedLengthThinkingModel(lm=lm, prompt="Hello, world", num_tokens=20)
@@ -61,8 +69,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+
+######## SMC CONSTRAINT MODEL ########
 class FixedLengthThinkingModel(Model):
-    """This Model demonstrates an example constraint to be used with the SMC Inference Server."""
+    """This FixedLengthThinkingModel demonstrates an example constraint to be used with the SMC Inference Server."""
     def __init__(
         self,
         lm: CachedCausalLM,
@@ -71,6 +81,7 @@ class FixedLengthThinkingModel(Model):
         temperature: float = 1.0
     ):
         super().__init__()
+
         self.lm = lm
         self.context = LMContext(lm, prompt, temperature)
         self.num_tokens = num_tokens
@@ -110,17 +121,14 @@ class FixedLengthThinkingModel(Model):
         token = await self.sample(next_dist)
         self.generated_tokens.append(token)
 
-class GenerationRequest(BaseModel):
-    prompt: str
-    num_tokens: int = 20
-    num_particles: int = 3
-    beam_factor: int = 1
-    temperature: float = 1.0
 
+# The following are used for metrics around total server runtime
 start_time = time.time()
 total_requests = 0
 total_tokens = 0
 request_times = []
+
+##### API ENDPOINTS AND HELPER METHODS #####
 
 async def get_next_available_model():
     global lm_models, model_locks, current_model_idx
