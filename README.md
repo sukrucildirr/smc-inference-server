@@ -1,12 +1,12 @@
 # smc-inference-server
 
-Run [Sequential Monte Carlo Steering]() as a local inference server for exploration, demos, and evaluation with [lm-evaluation-harness]()!
+Run [Sequential Monte Carlo Steering](https://arxiv.org/abs/2306.03081) as a local inference server for exploration, demos, and evaluation with [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness)!
 
-See our [technical blog publication]() for more information.
+See our [technical blog publication](https://smc-blogpost.vercel.app/) for more information.
 
 ## Overview
 
-This repository is designed to be a simple and extensible starting point for hosting models that utilize the [llamppl]() framework for steering. While `llampl` has a vLLM backend, it's not set up out-of-the-box to run benchmarks, so the first step was to wrap a simple API endpoint around the framework.
+This repository is designed to be a simple and extensible starting point for hosting models that utilize the [llamppl](https://github.com/genlm/llamppl) framework for steering. While `llampl` has a vLLM backend, it's not set up out-of-the-box to run benchmarks, so the first step was to wrap a simple API endpoint around the framework.
 
 Along with this, we share a simple distributed framework for spawning multiple SMC backends across your GPUs to maximize request processing, making it possible to run SMC benchmarks on the full MMLU set (and others!) in a matter of hours (WORK IN PROGRESS TBD).
 
@@ -18,7 +18,12 @@ pip install torch vllm llamppl fastapi uvicorn
 
 ### Usage
 
-To start the server:
+To test SMC framework works as expected:
+```
+python examples/entropy.py
+```
+
+To start the SMC Inference Server:
 
 ```
 uvicorn server:app --host 0.0.0.0
@@ -47,7 +52,7 @@ This evaluation framework relies on `generate_until` calls from our custom `LLaM
 
 ### LM Eval Harness
 
-Clone the lm-evaluation-harness repository following the steps [there]().
+Clone the lm-evaluation-harness repository following the steps [there](https://github.com/EleutherAI/lm-evaluation-harness?tab=readme-ov-file#install).
 
 To run MMLU with SMC, copy the sample task definition `evaluation/tasks/mmlu_smc_regex.yaml` to the `tasks/llama3/instruct/mmlu/` directory of `lm-evaluation-harness` (/path/to/lm-evaluation-harness/lm_eval/tasks/llama3/instruct/mmlu/ is the format). 
 
