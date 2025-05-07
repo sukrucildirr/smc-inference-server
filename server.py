@@ -38,7 +38,6 @@ async def lifespan(app: FastAPI):
     logger.info(f"Worker {WORKER_ID} initializing model on GPU {gpu_id}")
 
     # Startup and initialization steps
-
     kwargs = (
         {"engine_opts": {"gpu_memory_utilization": 0.95, "max_model_len": 1024}}
     )
@@ -55,7 +54,6 @@ async def lifespan(app: FastAPI):
     model_locks = [asyncio.Lock()]
 
     # Model warmup
-    
     logger.info(f"Warming up model on GPU {gpu_id}...")
     dummy_model = FixedLengthThinkingModel(lm=lm, prompt="Hello, world", num_tokens=20)
     await smc_steer(dummy_model, 3, 1)
@@ -69,11 +67,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-
 ######## SMC CONSTRAINT MODEL ########
+
 class FixedLengthSentenceModel(Model):
     """
-    This FixedLengthThinkingModel demonstrates an example 
+    This FixedLengthSentenceModel demonstrates an example 
     constraint to be used with the SMC Inference Server.
     The constraint here generates coherent sentences of a fixed length.
     """
@@ -103,8 +101,8 @@ class FixedLengthSentenceModel(Model):
         """Generate exactly num_tokens tokens with a coherent sentence ending in period."""
         current_length = len(self.generated_tokens)
         
+        # Condition on exact length and ending with a period
         if current_length >= self.num_tokens:
-            # Condition on exact length and ending with a period
             self.condition(current_length == self.num_tokens)
             self.condition(self.generated_tokens[-1].token_id in self.period_tokens)
             self.finish()
@@ -112,12 +110,13 @@ class FixedLengthSentenceModel(Model):
 
         next_dist = self.context.next_token()
 
+        # For the last token, force it to be one ending with period
         if current_length == self.num_tokens - 1:
-            # For the last token, force it to be one ending with period
             period_mask = self.period_tokens
             await self.observe(self.context.mask_dist(period_mask), True)
+
+        # For non-final tokens, prevent period tokens and EOS
         else:
-            # For non-final tokens, prevent period tokens and EOS
             non_period_mask = set(range(len(self.lm.vocab))) - self.period_tokens - {self.lm.tokenizer.eos_token_id}
             await self.observe(self.context.mask_dist(non_period_mask), True)
 
