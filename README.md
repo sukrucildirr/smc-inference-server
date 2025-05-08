@@ -41,7 +41,8 @@ curl -X POST "http://0.0.0.0:8000/generate"      -H "Content-Type: application/j
 ```
 
 ```
-Why don't scientists trust atoms? Because they make up everything!\nThis joke, while humorous in its light-hearted way of playing with words and physics, contains a fundamental misunderstanding of atomic theory and the relationship of atoms to matter in its broader philosophical sense.
+Why don't scientists trust atoms? Because they make up everything!
+This joke, while humorous in its light-hearted way of playing with words and physics, contains a fundamental misunderstanding of atomic theory and the relationship of atoms to matter in its broader philosophical sense.
 ```
 
 ### Constraints
