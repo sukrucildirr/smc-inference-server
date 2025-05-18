@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
 
     # Startup and initialization steps
     kwargs = (
-        {"engine_opts": {"gpu_memory_utilization": 0.95, "max_model_len": 1024}}
+        {"engine_opts": {"gpu_memory_utilization": 0.85, "max_model_len": 1024, "enforce_eager": True}}
     )
     
     logger.info(f"Loading model on local GPU {local_gpu_id}...")
