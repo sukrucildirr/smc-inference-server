@@ -4,11 +4,16 @@ import asyncio
 from typing import Dict, Any
 import time
 
+import os
+
 app = FastAPI()
 
+
+NUM_WORKERS = int(os.environ.get("NUM_WORKERS", 2))
+BACKEND_BASE_PORT = int(os.environ.get("BACKEND_BASE_PORT", 8001))
+
 BACKEND_SERVERS = [
-    "http://localhost:8001",
-    "http://localhost:8002"
+    f"http://localhost:{BACKEND_BASE_PORT + i}" for i in range(NUM_WORKERS)
 ]
 
 current_index = 0

@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, BackgroundTasks
 from llamppl import Model, LMContext, CachedCausalLM, TokenCategorical, Token, smc_steer
 from typing import List, Dict, Any
-from util.request_model import GenerationRequest # Assuming util/request_model.py exists and defines GenerationRequest
+from util.request_model import GenerationRequest
 
 
 MODEL_NAME = "NousResearch/Hermes-3-Llama-3.2-3B"
@@ -35,12 +35,9 @@ model_locks = []
 async def lifespan(app: FastAPI):
     global lm_models, model_locks
 
-    # Inside this container, only one GPU (index 0) is visible via CUDA_VISIBLE_DEVICES
-    # The actual physical GPU ID is managed by the Docker runtime.
     local_gpu_id = 0 
     logger.info(f"Worker {WORKER_ID} initializing model on local GPU {local_gpu_id}")
 
-    # Startup and initialization steps
     kwargs = (
         {"engine_opts": {"gpu_memory_utilization": 0.85, "max_model_len": 1024, "enforce_eager": True}}
     )
@@ -52,7 +49,7 @@ async def lifespan(app: FastAPI):
             backend='vllm',
             **kwargs
         )
-        lm.batch_size = 1 # Ensuring batch size is 1 for individual requests as per current design
+        lm.batch_size = 1
         
         lm_models = [lm]
         model_locks = [asyncio.Lock()]
@@ -60,12 +57,10 @@ async def lifespan(app: FastAPI):
         # Model warmup
         logger.info(f"Warming up model on local GPU {local_gpu_id}...")
         dummy_model = FixedLengthSentenceModel(lm=lm, prompt="Hello, world", num_tokens=20)
-        # Using a small number of particles/beam factor for warmup to be quick
         await smc_steer(dummy_model, 1, 1) 
         logger.info(f"Model warmup complete on local GPU {local_gpu_id}")
     except Exception as e:
         logger.error(f"Failed to load model on worker {WORKER_ID}: {e}")
-        # Optionally, re-raise the exception to prevent the app from starting
         raise
 
     yield
@@ -73,7 +68,7 @@ async def lifespan(app: FastAPI):
     logger.info(f"Shutting down model on worker {WORKER_ID} on local GPU {local_gpu_id}...")
     for lm in lm_models:
         del lm
-    # Attempt to clear CUDA memory if necessary (though vLLM usually manages this)
+
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
@@ -105,10 +100,11 @@ class FixedLengthSentenceModel(Model):
 
         # Find token IDs that end with a period
         self.period_tokens = set()
+
         # Ensure vocab is not None and is iterable
         if self.lm.vocab:
             for i, token in enumerate(self.lm.vocab):
-                if token and token.endswith('.'): # Check if token is not None
+                if token and token.endswith('.'):
                     self.period_tokens.add(i)
         else:
             logger.warning("LM vocab is empty or None, period_tokens will not be set.")
@@ -120,11 +116,12 @@ class FixedLengthSentenceModel(Model):
         # Condition on exact length and ending with a period
         if current_length >= self.num_tokens:
             self.condition(current_length == self.num_tokens)
+
             # Check if generated_tokens is not empty before accessing last element
             if self.generated_tokens and self.generated_tokens[-1].token_id in self.period_tokens:
                 self.condition(True)
             else:
-                self.condition(False) # Force failure if condition not met
+                self.condition(False)
             self.finish()
             return
 
@@ -133,21 +130,20 @@ class FixedLengthSentenceModel(Model):
         # For the last token, force it to be one ending with period
         if current_length == self.num_tokens - 1:
             period_mask = self.period_tokens
-            if not period_mask: # Handle case where period_tokens might be empty
+            if not period_mask:
                 logger.error("period_tokens mask is empty for final token constraint.")
-                self.condition(False) # Fail the particle if no valid tokens exist
+                self.condition(False)
                 self.finish()
                 return
             await self.observe(self.context.mask_dist(period_mask), True)
 
         # For non-final tokens, prevent period tokens and EOS
         else:
-            # Create a full set of token IDs, then remove restricted ones
             all_token_ids = set(range(len(self.lm.vocab)))
             non_period_mask = all_token_ids - self.period_tokens - {self.lm.tokenizer.eos_token_id}
-            if not non_period_mask: # Handle case where mask might be empty
+            if not non_period_mask:
                 logger.error("non_period_mask is empty for non-final token constraint.")
-                self.condition(False) # Fail the particle if no valid tokens exist
+                self.condition(False)
                 self.finish()
                 return
             await self.observe(self.context.mask_dist(non_period_mask), True)
@@ -167,15 +163,12 @@ request_times = []
 
 async def get_next_available_model():
     global lm_models, model_locks
-    # With one model per worker, we always return the first (and only) model
     return 0, lm_models[0], model_locks[0]
 
 async def generate_text(request):
-    # Basic validation for num_particles and beam_factor
     if request.num_particles <= 0 or request.beam_factor <= 0:
         raise ValueError("num_particles and beam_factor must be positive integers.")
     
-    # Check if lm_models is initialized
     if not lm_models:
         logger.error("Model not initialized. Cannot generate text.")
         raise RuntimeError("Model not initialized.")
@@ -203,7 +196,6 @@ async def generate_text(request):
                     return {"generated_text": "Generation failed: No valid particles found."}
 
                 best_particle = max(particles, key=lambda p: p.weight)
-                # Ensure the context is converted to string
                 generated_text = str(best_particle.context)
                 return {"generated_text": generated_text}
             except Exception as e:
@@ -217,7 +209,7 @@ async def health():
     return {
         "status": "ready", 
         "worker_id": WORKER_ID,
-        "gpu_id_in_container": 0 # This worker only sees GPU 0
+        "gpu_id_in_container": 0
     }
 
 @app.get("/model_info")
@@ -231,9 +223,9 @@ async def model_info():
     
     return {
         "eot_token_id": eos_token_id,
-        "max_length": max_model_len, # Using max_model_len from the loaded model
+        "max_length": max_model_len,
         "worker_id": WORKER_ID,
-        "gpu_id_in_container": 0 # This worker only sees GPU 0
+        "gpu_id_in_container": 0
     }
 
 @app.get("/stats")
@@ -265,10 +257,7 @@ async def generate(request: GenerationRequest):
         
         request_times.append(duration)
         total_requests += 1
-        # len(result["generated_text"]) might not be accurate for token count
-        # For more accurate token count, you'd need to tokenize the output
-        # For now, we'll keep it as is, but be aware of this for production metrics.
-        total_tokens += len(result.get("generated_text", "")) 
+        total_tokens += len(result.get("generated_text", "")) # change back to tokenizer encode
         
         if total_requests % 10 == 0:
             elapsed = time.time() - start_time

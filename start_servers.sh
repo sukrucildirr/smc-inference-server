@@ -1,24 +1,43 @@
 #!/bin/bash
-
-# Cleanup existing containers
 docker ps -a --filter "name=llamppl-worker" --format "{{.Names}}" | while read -r name; do
     echo "Stopping and removing container: $name"
     docker stop "$name" > /dev/null 2>&1
     docker rm "$name" > /dev/null 2>&1
 done
 
-# Define the number of workers and base host port
-NUM_WORKERS=2
-BASE_HOST_PORT=8001 # Start mapping from host port 8001
+detect_num_workers() {
+    if ! command -v nvidia-smi &> /dev/null
+    then
+        echo "nvidia-smi could not be found. Defaulting to 1 worker."
+        NUM_WORKERS=1
+    else
+        NUM_WORKERS=$(nvidia-smi -L | wc -l)
+        if [ "$NUM_WORKERS" -eq 0 ]; then
+            echo "No GPUs detected by nvidia-smi. Defaulting to 1 worker."
+            NUM_WORKERS=1
+        else
+            echo "Detected ${NUM_WORKERS} GPUs. Will launch that many workers."
+        fi
+    fi
+    if [ "$NUM_WORKERS" -lt 1 ]; then
+        NUM_WORKERS=1
+        echo "Adjusted NUM_WORKERS to 1 (minimum)."
+    fi
+    echo "Final NUM_WORKERS set to: ${NUM_WORKERS}"
+}
 
-# Delay in seconds between launching each worker
-LAUNCH_DELAY_SECONDS=120 # <--- Start with a generous delay like 60 seconds
+detect_num_workers
+
+BASE_HOST_PORT=8001
+
+# Delay in seconds between launching each worker - can be reduced if your system has enough RAM
+LAUNCH_DELAY_SECONDS=120
 
 echo "Starting ${NUM_WORKERS} llamppl inference workers..."
 
 for i in $(seq 0 $((NUM_WORKERS-1))); do
     HOST_PORT=$((BASE_HOST_PORT + i))
-    DEVICE_ID=$i # Assumes your GPUs are indexed 0, 1, 2, ...
+    DEVICE_ID=$i
     CONTAINER_NAME="llamppl-worker-${i}"
     RANK=$i
 
@@ -29,7 +48,6 @@ for i in $(seq 0 $((NUM_WORKERS-1))); do
       -p "${HOST_PORT}":8000 \
       -e WORKER_ID="${i}" \
       -e CUDA_VISIBLE_DEVICES="0" \
-      -e VLLM_NO_CUDA_GRAPHS="1" \
       --shm-size="4g" \
       -v "$(pwd)/.model_cache:/app/huggingface" \
       llamppl-inference-server
