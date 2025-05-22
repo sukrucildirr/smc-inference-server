@@ -2,7 +2,7 @@
 
 Run [Sequential Monte Carlo Steering](https://arxiv.org/abs/2306.03081) as a robust local inference server. This project is designed for exploration, demos, and efficient evaluation with [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness).
 
-Dive deeper into the technical aspects with our [technical blog publication](https://smc-blogpost.vercel.app/).
+Dive deeper into the technical aspects with our [blog publication](https://smc-blogpost.vercel.app/).
 
 ---
 
@@ -27,9 +27,15 @@ Follow these steps to get the SMC Inference Server up and running.
     pip install torch vllm llamppl fastapi uvicorn httpx numpy
     ```
 
+    OR
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
 ### Step-by-Step Deployment
 
-We recommend using Docker for a consistent and isolated environment.
+We recommend using Docker for a consistent and isolated environment and to avoid dependency issues if running the inference server. For demo examples and exploration use pip install with a virtualenv.
 
 1.  **Build the Docker Image**:
     First, build the Docker image for your SMC Inference Server. This command compiles the necessary dependencies and sets up your environment.
@@ -60,9 +66,20 @@ We recommend using Docker for a consistent and isolated environment.
 
 Once the servers are running, you can start sending generation requests.
 
+Sample request:
+
+```bash
+curl -X POST "http://0.0.0.0:8000/generate"      -H "Content-Type: application/json"      -d '{
+           "prompt": "Here is a short joke:",
+           "num_particles": 3,
+           "beam_factor": 1,
+           "num_tokens": 50
+         }'
+```
+
 ### Testing the SMC Framework
 
-To verify that the `llamppl` framework is working as expected with a simple example:
+To verify that the `llamppl` framework is working as expected (will require pip install) with a simple example:
 
 ```bash
 python examples/entropy.py
