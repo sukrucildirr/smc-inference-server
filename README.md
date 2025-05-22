@@ -77,7 +77,7 @@ curl -X POST "http://0.0.0.0:8000/generate"      -H "Content-Type: application/j
          }'
 ```
 
-### Testing the SMC Framework
+### Testing the SMC Framework for Exploration
 
 To verify that the `llamppl` framework is working as expected (will require pip install) with a simple example:
 
@@ -87,7 +87,7 @@ python examples/entropy.py
 
 ## 📝 Evaluation
 
-This evaluation framework relies on `generate_until` calls from our custom `LLaMPPLInferenceAdapter`, and uses regex to extract the answer from the response. The sample task definition in `evaluation/tasks/mmlu_smc_regex.yaml` covers how this is set up.
+This evaluation framework relies on `generate_until` calls from our custom `LLaMPPLInferenceAdapter` (`evaluation/llamppl_inference_adapter.py`), and uses regex to extract the answer from the response. The sample task definition in `evaluation/tasks/mmlu_smc_regex.yaml` covers how this is set up, though your tasks should be copied to `lm_eval` tasks directory, noted below.
 
 ### LM Eval Harness
 
@@ -100,3 +100,7 @@ All future task definitions for generative MMLU tasks should go in here as well.
 Lastly, add the path to the above `tasks` directory to `simple_eval.py`, so `lm-evaluation-harness` can find your new task definition.
 
 Run the server + load balancer, and in another terminal, run `python simple_eval.py` to run the evaluation. Results will be saved to `run_data.json`.
+
+## Future Work
+
+Development on this project will continue as we explore new constraint designs and optimizations to the framework here. It is both useful for experimenting and for benchmarking at a larger scale, expecially on compute clusters with >4 GPUs. 8xH100 was able to finish the entire 15,000 question MMLU set in under 4 hours using this. More updates to come soon!
