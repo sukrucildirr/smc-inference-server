@@ -1,57 +1,74 @@
-# smc-inference-server
+# 🚀 SMC Inference Server
 
-Run [Sequential Monte Carlo Steering](https://arxiv.org/abs/2306.03081) as a local inference server for exploration, demos, and evaluation with [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness)!
+Run [Sequential Monte Carlo Steering](https://arxiv.org/abs/2306.03081) as a robust local inference server. This project is designed for exploration, demos, and efficient evaluation with [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness).
 
-See our [technical blog publication](https://smc-blogpost.vercel.app/) for more information.
+Dive deeper into the technical aspects with our [technical blog publication](https://smc-blogpost.vercel.app/).
 
-## Overview
+---
 
-This repository is designed to be a simple and extensible starting point for hosting models that utilize the [llamppl](https://github.com/genlm/llamppl) framework for steering. While `llampl` has a vLLM backend, it's not set up out-of-the-box to run benchmarks, so the first step was to wrap a simple API endpoint around the framework.
+## 🌟 Overview
 
-Along with this, we share a simple distributed framework for spawning multiple SMC backends across your GPUs to maximize request processing, making it possible to run SMC benchmarks on the full MMLU set (and others!) in a matter of hours (WORK IN PROGRESS TBD).
+This repository provides a streamlined and extensible foundation for hosting language models that leverage the [llamppl](https://github.com/genlm/llamppl) framework for steerable generation. While `llamppl` integrates with vLLM, this project wraps it with a simple, production-ready API endpoint, making it easier to integrate into your workflows and run benchmarks.
 
-### Dependencies
+It also includes a distributed framework designed to launch multiple SMC backends across your GPUs, maximizing request processing throughput. This capability aims to enable running SMC benchmarks on extensive datasets like MMLU in a matter of hours.
 
-```
-pip install torch vllm llamppl fastapi uvicorn
-```
+---
 
-### Usage
+## 🛠️ Setup and Installation
 
-To test SMC framework works as expected:
-```
+Follow these steps to get the SMC Inference Server up and running.
+
+### Prerequisites
+
+* **Docker**: Ensure Docker is installed and running on your system.
+* **CUDA**: Your system should have NVIDIA GPUs and CUDA drivers installed for `vLLM` to function correctly.
+* **Python Dependencies (for development/local setup without Docker)**:
+    ```bash
+    pip install torch vllm llamppl fastapi uvicorn httpx numpy
+    ```
+
+### Step-by-Step Deployment
+
+We recommend using Docker for a consistent and isolated environment.
+
+1.  **Build the Docker Image**:
+    First, build the Docker image for your SMC Inference Server. This command compiles the necessary dependencies and sets up your environment.
+
+    ```bash
+    docker build -t llamppl-inference-server .
+    ```
+
+2.  **Start Backend Inference Servers**:
+    Each backend server will run in its own Docker container, utilizing a dedicated GPU. The `./start_servers.sh` script handles this orchestration. Make sure your `CUDA_VISIBLE_DEVICES` environment variable is correctly configured if you want to assign specific GPUs.
+
+    ```bash
+    ./start_servers.sh
+    ```
+    * **Note**: This script expects your system to have available GPUs and will launch a server for each `WORKER_ID` as defined in the script. Modify the script if you need to control the number of workers or GPU assignments.
+
+3.  **Start the Load Balancer**:
+    In a **separate terminal**, start the FastAPI load balancer. This component will distribute incoming requests among your backend inference servers.
+
+    ```bash
+    uvicorn load_balancer:app --host 0.0.0.0 --port 8000
+    ```
+    * The load balancer will be accessible at `http://0.0.0.0:8000`.
+
+---
+
+## 🚀 Usage
+
+Once the servers are running, you can start sending generation requests.
+
+### Testing the SMC Framework
+
+To verify that the `llamppl` framework is working as expected with a simple example:
+
+```bash
 python examples/entropy.py
 ```
 
-To start the SMC Inference Server:
-
-```
-uvicorn server:app --host 0.0.0.0
-```
-
-Requests can be made to the endpoint from the command line like so:
-
-```
-curl -X POST "http://0.0.0.0:8000/generate"      -H "Content-Type: application/json"      -d '{
-           "prompt": "Here is a short joke:",
-           "num_particles": 3,
-           "beam_factor": 1,
-           "num_tokens": 50
-         }'
-```
-
-```
-Why don't scientists trust atoms? Because they make up everything!
-This joke, while humorous in its light-hearted way of playing with words and physics, contains a fundamental misunderstanding of atomic theory and the relationship of atoms to matter in its broader philosophical sense.
-```
-
-### Constraints
-
-To create new constraints for SMC, edit the `server.py` file, where the `FixedLengthSentenceModel` is defined. Examples of constraints can be found in the `examples` directory, covering the constrainted we explored in our blog post.
-
-The request body in `util/request_model.py` can also be edited to include more parameters relevant to your constraint design. Keep in mind the request body for `generate_until` inside `evaluation/tasks/llamppl_inference_adapter.py` will need to be updated as well if you plan to run benchmarks.
-
-## Evaluation Steps
+## 📝 Evaluation
 
 This evaluation framework relies on `generate_until` calls from our custom `LLaMPPLInferenceAdapter`, and uses regex to extract the answer from the response. The sample task definition in `evaluation/tasks/mmlu_smc_regex.yaml` covers how this is set up.
 
@@ -65,8 +82,4 @@ All future task definitions for generative MMLU tasks should go in here as well.
 
 Lastly, add the path to the above `tasks` directory to `simple_eval.py`, so `lm-evaluation-harness` can find your new task definition.
 
-Run the server, and in another terminal, run `python simple_eval.py` to run the evaluation. Results will be saved to `run_data.json`.
-
-## TODO
-
-Parallelization is next on our roadmap, with the move to vLLM we have some bugs around standing up parallel model instances on separate GPUs. This wasn't an issue in the past, but right now we just have a single instance stood up on a single GPU for a starting point. There will be updates to this soon.
+Run the server + load balancer, and in another terminal, run `python simple_eval.py` to run the evaluation. Results will be saved to `run_data.json`.
