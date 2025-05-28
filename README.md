@@ -1,12 +1,12 @@
-# 🚀 SMC Inference Server
+# 🌟 SMC Inference Server
 
 Run [Sequential Monte Carlo Steering](https://arxiv.org/abs/2306.03081) as a robust local inference server. This project is designed for exploration, demos, and efficient evaluation with [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness).
 
-Dive deeper into the technical aspects with our [blog publication](https://smc-blogpost.vercel.app/).
+For more info, check out our [blog publication](https://smc-blogpost.vercel.app/) covering experiment setups and our takeaways.
 
 ---
 
-## 🌟 Overview
+## 🛠️ Overview
 
 This repository provides a streamlined and extensible foundation for hosting language models that leverage the [llamppl](https://github.com/genlm/llamppl) framework for steerable generation. While `llamppl` integrates with vLLM, this project wraps it with a simple, production-ready API endpoint, making it easier to integrate into your workflows and run benchmarks.
 
@@ -23,11 +23,18 @@ Follow these steps to get the SMC Inference Server up and running.
 * **Docker**: Ensure Docker is installed and running on your system.
 * **CUDA**: Your system should have NVIDIA GPUs and CUDA drivers installed for `vLLM` to function correctly.
 * **Python Dependencies (for development/local setup without Docker)**:
+
     ```bash
-    pip install torch vllm llamppl fastapi uvicorn httpx numpy
+    torch 
+    vllm 
+    llamppl 
+    fastapi 
+    uvicorn 
+    httpx 
+    numpy
     ```
 
-    OR
+    You can use the following to install everything needed:
 
     ```bash
     pip install -r requirements.txt
@@ -62,7 +69,7 @@ We recommend using Docker for a consistent and isolated environment and to avoid
 
 ---
 
-## 🚀 Usage
+## 🛠️ Usage
 
 Once the servers are running, you can start sending generation requests.
 
@@ -77,7 +84,7 @@ curl -X POST "http://0.0.0.0:8000/generate"      -H "Content-Type: application/j
          }'
 ```
 
-### Testing the SMC Framework for Exploration
+### Testing the SMC Framework for Exploration and Development
 
 To verify that the `llamppl` framework is working as expected (will require pip install) with a simple example:
 
@@ -85,7 +92,7 @@ To verify that the `llamppl` framework is working as expected (will require pip 
 python examples/entropy.py
 ```
 
-## 📝 Evaluation
+## 🛠️ Evaluation
 
 This evaluation framework relies on `generate_until` calls from our custom `LLaMPPLInferenceAdapter` (`evaluation/llamppl_inference_adapter.py`), and uses regex to extract the answer from the response. The sample task definition in `evaluation/tasks/mmlu_smc_regex.yaml` covers how this is set up, though your tasks should be copied to `lm_eval` tasks directory, noted below.
 
@@ -101,6 +108,6 @@ Lastly, add the path to the above `tasks` directory to `simple_eval.py`, so `lm-
 
 Run the server + load balancer, and in another terminal, run `python simple_eval.py` to run the evaluation. Results will be saved to `run_data.json`.
 
-## Future Work
+## 🛠️ Future Work
 
 Development on this project will continue as we explore new constraint designs and optimizations to the framework here. It is both useful for experimenting and for benchmarking at a larger scale, expecially on compute clusters with >4 GPUs. 8xH100 was able to finish the entire 15,000 question MMLU set in under 4 hours using this. More updates to come soon!
