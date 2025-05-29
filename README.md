@@ -59,8 +59,12 @@ We recommend using Docker for a consistent and isolated environment and to avoid
     ```
     * **Note**: This script expects your system to have available GPUs and will launch a server for each `WORKER_ID` as defined in the script. Modify the script if you need to control the number of workers or GPU assignments.
 
+    To kill containers, run `docker stop llamppl-worker-X && docker rm llamppl-worker-X`
+
 3.  **Start the Load Balancer**:
-    In a **separate terminal**, start the FastAPI load balancer. This component will distribute incoming requests among your backend inference servers.
+    If you want to use multiple GPUs, in a **separate terminal**, start the FastAPI load balancer. This component will distribute incoming requests among your backend inference servers.
+
+    The workers take some time to start as there is a sleep timer in the startup script, so this should be run once they are finished.
 
     ```bash
     uvicorn load_balancer:app --host 0.0.0.0 --port 8000
@@ -107,6 +111,8 @@ All future task definitions for generative MMLU tasks should go in here as well.
 Lastly, add the path to the above `tasks` directory to `simple_eval.py`, so `lm-evaluation-harness` can find your new task definition.
 
 Run the server + load balancer, and in another terminal, run `python simple_eval.py` to run the evaluation. Results will be saved to `run_data.json`.
+
+*Note:* this may take a while, recent upgrades to llamppl have required some workarounds to get everything running, this will be updated as issues are resolved.
 
 ## 🛠️ Future Work
 
