@@ -35,7 +35,7 @@ class LLaMPPLInferenceModel(LM):
         
     async def _generate_async(self, request_data, session):
         """Helper function to make an async request"""
-        async with session.post(f"{self.server_url}/generate", json=request_data, timeout=aiohttp.ClientTimeout(total=120)) as response:
+        async with session.post(f"{self.server_url}/generate", json=request_data, timeout=aiohttp.ClientTimeout(total=600)) as response:
             if response.status == 200:
                 result = await response.json()
                 return result["generated_text"]
@@ -69,7 +69,7 @@ class LLaMPPLInferenceModel(LM):
                     all_tasks.append(self._generate_async(request_data, session))
                 
                 all_results = []
-                batch_size = 8
+                batch_size = 2
 
                 for i in range(0, len(all_tasks), batch_size):
                     batch = all_tasks[i:i+batch_size]

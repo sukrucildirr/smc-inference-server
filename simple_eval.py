@@ -5,6 +5,8 @@ import os
 
 # --- Configuration and Initialization ---
 
+NUM_WORKERS = 2
+
 # Initialize the custom language model for evaluation.
 # This model uses a probabilistic programming approach with specified parameters.
 #   - num_particles: The number of particles to use for SMC inference.
@@ -24,11 +26,12 @@ task_manager = lm_eval.tasks.TaskManager(include_path="/path/to/lm-evaluation-ha
 # Perform the evaluation using lm-evaluation-harness's simple_evaluate function.
 # This function runs the specified language model against a set of tasks.
 results = lm_eval.simple_evaluate(
-    model=lm_obj,                  # The language model object to evaluate.
-    tasks=["mmlu_smc_regex"],      # A list of tasks to run. "mmlu_smc_regex" is an example task.
-    num_fewshot=0,                 # Number of few-shot examples to provide to the model (0 for zero-shot).
-    batch_size=1,                  # Number of examples to process in a single batch.
-    task_manager=task_manager,     # The initialized TaskManager.
+    model=lm_obj,
+    tasks=["mmlu_smc_regex"],
+    num_fewshot=0,
+    batch_size=1,
+    task_manager=task_manager,
+    device="cpu",
     limit=1                        # Optional: Limit the number of examples evaluated per task (useful for testing).
 )
 
