@@ -169,8 +169,8 @@ if __name__ == "__main__":
     # Run the FastAPI application using Uvicorn
     uvicorn.run(
         app,
-        host="0.0.0.0",  # Listen on all available network interfaces
-        port=8000,       # Load balancer will listen on port 8000
-        workers=4,       # Uvicorn workers for handling incoming requests to the load balancer
-        limit_concurrency=32, # Limit the number of concurrent connections (requests) per worker
+        host="0.0.0.0",
+        port=8000,
+        workers=4,
+        limit_concurrency=32,
     )

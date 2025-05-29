@@ -53,6 +53,7 @@ for i in $(seq 0 $((NUM_WORKERS-1))); do
       llamppl-inference-server
 
     if [ "$i" -lt $((NUM_WORKERS-1)) ]; then
+        # The sleep here is for shared memory constraint, feel free to lower it if your system can support it
         echo "Waiting for ${LAUNCH_DELAY_SECONDS} seconds before launching next worker..."
         sleep ${LAUNCH_DELAY_SECONDS}
     fi
